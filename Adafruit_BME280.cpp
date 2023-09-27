@@ -338,7 +338,7 @@ bool Adafruit_BME280::isReadingCalibration(void) {
  *   @brief  Returns the temperature from the sensor
  *   @returns the temperature read from the device
  */
-float Adafruit_BME280::readTemperature(void) {
+int32_t Adafruit_BME280::readTemperature(void) {
   int32_t var1, var2;
 
   int32_t adc_T = read24(BME280_REGISTER_TEMPDATA);
@@ -346,16 +346,16 @@ float Adafruit_BME280::readTemperature(void) {
     return NAN;
   adc_T >>= 4;
 
-  var1 = (int32_t)((adc_T / 8) - ((int32_t)_bme280_calib.dig_T1 * 2));
-  var1 = (var1 * ((int32_t)_bme280_calib.dig_T2)) / 2048;
-  var2 = (int32_t)((adc_T / 16) - ((int32_t)_bme280_calib.dig_T1));
-  var2 = (((var2 * var2) / 4096) * ((int32_t)_bme280_calib.dig_T3)) / 16384;
+  var1 = (int32_t)((adc_T >> 3) - ((int32_t)_bme280_calib.dig_T1 << 1));
+  var1 = (var1 * ((int32_t)_bme280_calib.dig_T2)) >> 11;
+  var2 = (int32_t)((adc_T >> 4) - ((int32_t)_bme280_calib.dig_T1));
+  var2 = (((var2 * var2) >> 12) * ((int32_t)_bme280_calib.dig_T3)) >> 14;
 
   t_fine = var1 + var2 + t_fine_adjust;
 
-  int32_t T = (t_fine * 5 + 128) / 256;
+  int32_t T = (t_fine * 5 + 128) >> 8;
 
-  return (float)T / 100;
+  return T;
 }
 
 /*!
@@ -401,7 +401,7 @@ float Adafruit_BME280::readPressure(void) {
  *  @brief  Returns the humidity from the sensor
  *  @returns the humidity value read from the device
  */
-float Adafruit_BME280::readHumidity(void) {
+uint32_t Adafruit_BME280::readHumidity(void) {
   int32_t var1, var2, var3, var4, var5;
 
   readTemperature(); // must be done first to get t_fine
@@ -411,22 +411,22 @@ float Adafruit_BME280::readHumidity(void) {
     return NAN;
 
   var1 = t_fine - ((int32_t)76800);
-  var2 = (int32_t)(adc_H * 16384);
-  var3 = (int32_t)(((int32_t)_bme280_calib.dig_H4) * 1048576);
+  var2 = (int32_t)(adc_H << 14);
+  var3 = (int32_t)(((int32_t)_bme280_calib.dig_H4) << 20);
   var4 = ((int32_t)_bme280_calib.dig_H5) * var1;
-  var5 = (((var2 - var3) - var4) + (int32_t)16384) / 32768;
-  var2 = (var1 * ((int32_t)_bme280_calib.dig_H6)) / 1024;
-  var3 = (var1 * ((int32_t)_bme280_calib.dig_H3)) / 2048;
-  var4 = ((var2 * (var3 + (int32_t)32768)) / 1024) + (int32_t)2097152;
-  var2 = ((var4 * ((int32_t)_bme280_calib.dig_H2)) + 8192) / 16384;
+  var5 = (((var2 - var3) - var4) + (int32_t)16384) >> 15;
+  var2 = (var1 * ((int32_t)_bme280_calib.dig_H6)) >> 10;
+  var3 = (var1 * ((int32_t)_bme280_calib.dig_H3)) >> 11;
+  var4 = ((var2 * (var3 + (int32_t)32768)) >> 10) + (int32_t)2097152;
+  var2 = ((var4 * ((int32_t)_bme280_calib.dig_H2)) + 8192) >> 14;
   var3 = var5 * var2;
-  var4 = ((var3 / 32768) * (var3 / 32768)) / 128;
-  var5 = var3 - ((var4 * ((int32_t)_bme280_calib.dig_H1)) / 16);
+  var4 = ((var3 >> 15) * (var3 >> 15)) >> 7;
+  var5 = var3 - ((var4 * ((int32_t)_bme280_calib.dig_H1)) >> 4);
   var5 = (var5 < 0 ? 0 : var5);
   var5 = (var5 > 419430400 ? 419430400 : var5);
-  uint32_t H = (uint32_t)(var5 / 4096);
+  uint32_t H = (uint32_t)(var5 >> 12);
 
-  return (float)H / 1024.0;
+  return H; // needs to be devided through 1024 in main
 }
 
 /*!

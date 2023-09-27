@@ -226,9 +226,9 @@ public:
                    standby_duration duration = STANDBY_MS_0_5);
 
   bool takeForcedMeasurement(void);
-  float readTemperature(void);
+  int32_t readTemperature(void);
   float readPressure(void);
-  float readHumidity(void);
+  uint32_t readHumidity(void);
 
   float readAltitude(float seaLevel);
   float seaLevelForAltitude(float altitude, float pressure);
